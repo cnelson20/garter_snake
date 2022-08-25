@@ -19,7 +19,7 @@ FOOD_Y = $37
 
 PLAYER_ALIVE = $38 
 
-frameCounter = $39
+LASTJIFFY = $39
 
 ; Constants 
 SNAKE_COLOR = $06
@@ -32,6 +32,8 @@ FILLED_SPACE = $A0
 .SEGMENT "INIT"
 .SEGMENT "STARTUP"
 .SEGMENT "ONCE"
+	
+	stz $9F35
 	
 	lda #FILLED_SPACE
 	ldx #EMPTY_COLOR
@@ -66,11 +68,11 @@ FILLED_SPACE = $A0
 	
 	jsr gen_food_xy
 
-	jsr preserve_default_irq ; sets custom as well
+	;jsr preserve_default_irq ; sets custom as well
 
-	lda #0
-Loop:
-	beq Loop
+	;lda #0
+;Loop:
+	;beq Loop
 	
 frame:
 	; keyboard controls 
@@ -138,12 +140,11 @@ keyboard_done:
 	cpx #80
 	bcs dead
 	cmp #60
-	bcs dead
 	bcc notDead
 	
 dead:
 	;lda #$80
-	sta $9F25
+	;sta $9F25
 	jmp ($FFFC)
 
 notDead:
@@ -205,7 +206,26 @@ clear_tail:
 	lda #EMPTY_COLOR
 	sta $9F23 
 	
-	rts 
+RDTIM = $FFDE 
+
+	lda #2
+	pha 
+vsyncloop:
+	pla 
+	beq endloop
+	dec A 
+	pha 
+waitvsync:
+	jsr RDTIM
+	sta LASTJIFFY
+@keep_waiting:
+	jsr RDTIM
+	cmp LASTJIFFY
+	beq @keep_waiting	
+	
+	bra vsyncloop
+endloop:
+	jmp frame
 
 gen_food_xy:
 @get_x:
@@ -248,36 +268,36 @@ gen_food_xy:
 	sta $9F23 
 	rts 
 	
-preserve_default_irq:
-    lda $0314
-    sta Default_irq_handler
-    lda $0315
-    sta Default_irq_handler+1
-@set_custom_irq_handler:
-    sei
-    lda #<custom_irq_handler
-    sta $0314
-    lda #>custom_irq_handler
-    sta $0315
-    cli
-    rts
+;preserve_default_irq:
+    ;lda $0314
+    ;sta Default_irq_handler
+    ;lda $0315
+    ;sta Default_irq_handler+1
+;@set_custom_irq_handler:
+    ;sei
+    ;lda #<custom_irq_handler
+    ;sta $0314
+    ;lda #>custom_irq_handler
+    ;sta $0315
+    ;cli
+    ;rts
 
-custom_irq_handler:
-    lda $9F27
-    and #$01
-    beq @irq_done
-        ; vsync ;
-		lda frameCounter
-		inc A
-		sta frameCounter
-        and #%00000011
-		bne @dec9F27
+;custom_irq_handler:
+    ;lda $9F27
+    ;and #$01
+    ;beq @irq_done
+    ; vsync ;
+	;lda frameCounter
+	;inc A
+	;sta frameCounter
+    ;and #%00000011
+	;bne @dec9F27
 		
-		jsr frame
+	;jsr frame
 		
-		@dec9F27:
-		dec $9F27 
+	;@dec9F27:
+	;dec $9F27 
 
-    @irq_done:
-    jmp (Default_irq_handler)
+    ;@irq_done:
+    ;jmp (Default_irq_handler)
 
